@@ -10,7 +10,7 @@ import { steerTowards, vec3Splat } from "./helpers";
 import { spawnBot } from "./spawnBot";
 
 const host = "localhost";
-const port = 34295;
+const port = 36223;
 // Note that when you run this locally over "Open to LAN" the limit is 8 players
 // including yourself.
 const preyCount = 7;
@@ -22,11 +22,12 @@ const preyCount = 7;
             .fill(undefined)
             .map((_, i) => spawnBot(host, port, `prey_${i}`))
     );
-
     console.log(`${preyCount} prey bots connected.`);
 
     // Bots always go forward. We just change where they look.
     for (let bot of prey) {
+        // TODO: Consider setting bot.settings.viewDistance to root of
+        // PREY_VIEW_DISTANCE_SQ + some small amount.
         bot.setControlState("forward", true);
     }
 
@@ -34,13 +35,13 @@ const preyCount = 7;
     let lastRun = Date.now();
     let msDelta = 0;
     while (true) {
-        msDelta = lastRun - Date.now();
+        msDelta = Date.now() - lastRun;
         if (msDelta < MIN_TICK_MS) {
             // Sleep if we updated too quick.
             await new Promise((resolve) =>
                 setTimeout(resolve, MIN_TICK_MS - msDelta)
             );
-            msDelta = lastRun - Date.now();
+            msDelta = Date.now() - lastRun;
         }
         lastRun = Date.now();
 
