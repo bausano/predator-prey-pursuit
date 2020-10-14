@@ -8,7 +8,8 @@
   "author": "Michael Bausanp",
   "license": "ISC",
   "dependencies": {
-    "mineflayer": "2.29"
+    "mineflayer": "2.29",
+    "vec3": "^0.1.7"
   },
   "devDependencies": {
     "typescript": "^4.0",
