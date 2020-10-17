@@ -6,12 +6,13 @@ import {
     PREY_AVOID_RADIUS_SQ,
     PREY_VISION_RADIUS_SQ,
     SEPARATION_FORCE,
+    WALL_REPELLING_FORCE,
 } from "./consts";
-import { steerTowards, vec3Splat } from "./helpers";
+import { steerTowards, vec3Splat, wallsAround } from "./helpers";
 import { spawnBot } from "./spawnBot";
 
 const host = "localhost";
-const port = 34323;
+const port = 39047;
 // Note that when you run this locally over "Open to LAN" the limit is 8 players
 // including yourself.
 const preyCount = 7;
@@ -88,10 +89,7 @@ const preyCount = 7;
                         if (sqDist < PREY_AVOID_RADIUS_SQ) {
                             separationDir.add(offset.scale(1 / sqDist));
                         }
-                    } else if (
-                        entity.username.startsWith("predator") ||
-                        entity.type === "player"
-                    ) {
+                    } else {
                         // Find the offset from prey position to predator
                         // position and make it more pressing as the predator
                         // is closer.
@@ -107,7 +105,20 @@ const preyCount = 7;
                 // We collect acceleration which we want to apply to the bot.
                 const acceleration = vec3Splat(0);
 
-                // TODO: Repel from walls.
+                const walls = wallsAround(bot);
+                if (walls.length) {
+                    const avoidWallsDir = vec3Splat(0);
+                    for (const wall of walls) {
+                        avoidWallsDir.add(position.clone().subtract(wall));
+                    }
+                    const avoidWallsForce = steerTowards(
+                        velocity,
+                        avoidWallsDir
+                    );
+                    acceleration.add(
+                        avoidWallsForce.scale(WALL_REPELLING_FORCE)
+                    );
+                }
 
                 // If there's nearby threat to escape from, it has priority to
                 // flocking behavior.

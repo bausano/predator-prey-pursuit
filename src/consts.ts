@@ -8,9 +8,10 @@ export const PREY_MAX_STEERING_FORCE = 5;
 export const PREY_STEERING_FORCE_WEIGHT = 5;
 // Minimal time delay between updates to prey.
 export const MIN_TICK_MS = 40;
+// Id of the fence block.
+export const WALL_BLOCK = 191;
 
-// TODO
-export const WALL_REPELLING_FORCE = 2.0;
+export const WALL_REPELLING_FORCE = 5.0;
 export const ALIGNMENT_FORCE = 1.5;
 export const SEPARATION_FORCE = 1.5;
 export const COHESION_FORCE = 1.0;
