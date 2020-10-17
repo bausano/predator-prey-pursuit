@@ -14,4 +14,4 @@ export const WALL_REPELLING_FORCE = 2.0;
 export const ALIGNMENT_FORCE = 1.5;
 export const SEPARATION_FORCE = 1.5;
 export const COHESION_FORCE = 1.0;
-export const ESCAPE_FORCE = 3.0;
+export const ESCAPE_FORCE = 4.0;

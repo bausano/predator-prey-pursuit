@@ -1,6 +1,7 @@
 import {
     ALIGNMENT_FORCE,
     COHESION_FORCE,
+    ESCAPE_FORCE,
     MIN_TICK_MS,
     PREY_AVOID_RADIUS_SQ,
     PREY_VISION_RADIUS_SQ,
@@ -10,7 +11,7 @@ import { steerTowards, vec3Splat } from "./helpers";
 import { spawnBot } from "./spawnBot";
 
 const host = "localhost";
-const port = 36223;
+const port = 34323;
 // Note that when you run this locally over "Open to LAN" the limit is 8 players
 // including yourself.
 const preyCount = 7;
@@ -25,7 +26,7 @@ const preyCount = 7;
     console.log(`${preyCount} prey bots connected.`);
 
     // Bots always go forward. We just change where they look.
-    for (let bot of prey) {
+    for (const bot of prey) {
         // TODO: Consider setting bot.settings.viewDistance to root of
         // PREY_VIEW_DISTANCE_SQ + some small amount.
         bot.setControlState("forward", true);
@@ -54,14 +55,17 @@ const preyCount = 7;
                 // How many other prey is nearby.
                 let flockmates = 0;
                 // Sums all heading vectors of all nearby flockmates.
-                let headingDir = vec3Splat(0);
+                const headingDir = vec3Splat(0);
                 // Sums all position vectors of all nearby flockmates.
-                let centerTotal = vec3Splat(0);
-                // We calculate in which direction should we move to avoid other prey.
-                // We don't want prey to be too close to one another.
-                let separationDir = vec3Splat(0);
+                const centerTotal = vec3Splat(0);
+                // We calculate in which direction should we move to avoid other
+                // prey. We don't want prey to be too close to one another.
+                const separationDir = vec3Splat(0);
+                // Calculates which direction should the prey run in to avoid
+                // nearby predators.
+                const escapeDir = vec3Splat(0);
 
-                for (let entity of Object.values(bot.entities)) {
+                for (const entity of Object.values(bot.entities)) {
                     const offset = position.clone().subtract(entity.position);
                     // Just making sure this quantity is not zero for convenience.
                     const sqDist =
@@ -72,10 +76,7 @@ const preyCount = 7;
                         continue;
                     }
 
-                    if (
-                        entity.type === "player" ||
-                        entity.username.startsWith("prey")
-                    ) {
+                    if (entity.username.startsWith("prey")) {
                         flockmates++;
                         // Used to calculate affect of alignment force. See below.
                         headingDir.add(entity.velocity);
@@ -87,37 +88,52 @@ const preyCount = 7;
                         if (sqDist < PREY_AVOID_RADIUS_SQ) {
                             separationDir.add(offset.scale(1 / sqDist));
                         }
-                    } else if (entity.username.startsWith("predator")) {
-                        // TODO: Maybe we can use "else" as all other usernames
-                        // imply predators.
+                    } else if (
+                        entity.username.startsWith("predator") ||
+                        entity.type === "player"
+                    ) {
+                        // Find the offset from prey position to predator
+                        // position and make it more pressing as the predator
+                        // is closer.
+                        escapeDir.add(
+                            position
+                                .clone()
+                                .subtract(entity.position)
+                                .scale(1 / sqDist)
+                        );
                     }
                 }
 
                 // We collect acceleration which we want to apply to the bot.
-                let acceleration = vec3Splat(0);
+                const acceleration = vec3Splat(0);
 
                 // TODO: Repel from walls.
 
-                if (flockmates > 0) {
+                // If there's nearby threat to escape from, it has priority to
+                // flocking behavior.
+                if (escapeDir.x || escapeDir.z) {
+                    const escapeForce = steerTowards(velocity, escapeDir);
+                    acceleration.add(escapeForce.scale(ESCAPE_FORCE));
+                } else if (flockmates > 0) {
                     // Weighted sum of positions of nearby flock mates, then an offset
                     // to current position is taken.
-                    let offsetToFlockCenter = centerTotal
+                    const offsetToFlockCenter = centerTotal
                         .scale(1 / flockmates)
                         .subtract(position);
-                    let cohesionForce = steerTowards(
+                    const cohesionForce = steerTowards(
                         velocity,
                         offsetToFlockCenter
                     );
                     acceleration.add(cohesionForce.scale(COHESION_FORCE));
 
                     // Aligns velocity vectors with nearby flockmates.
-                    let alignmentForce = steerTowards(velocity, headingDir);
+                    const alignmentForce = steerTowards(velocity, headingDir);
                     acceleration.add(alignmentForce.scale(ALIGNMENT_FORCE));
 
                     // If there is some separation to be sustained with nearby
                     // flockmates, apply the force to the acceleration.
-                    if (separationDir.x !== 0 || separationDir.z !== 0) {
-                        let separationForce = steerTowards(
+                    if (separationDir.x || separationDir.z) {
+                        const separationForce = steerTowards(
                             velocity,
                             separationDir
                         );
